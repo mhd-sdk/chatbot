@@ -18,13 +18,12 @@ func LoadEnv() (err error) {
 		return ErrLoadingEnv
 	}
 
-	apiKey := os.Getenv("API_KEY")
-	secretKey := os.Getenv("SECRET_KEY")
+	dbURL := os.Getenv("DB_URL")
+	dbUser := os.Getenv("DB_USER")
+	dbPwd := os.Getenv("DB_PWD")
+	dbName := os.Getenv("DB_NAME")
 
-	marketDataUrl := os.Getenv("MARKET_DATA_URL")
-	routingUrl := os.Getenv("ROUTING_URL")
-
-	if apiKey == "" || secretKey == "" || marketDataUrl == "" || routingUrl == "" {
+	if dbURL == "" || dbUser == "" || dbPwd == "" || dbName == "" {
 		return ErrMissingEnvVars
 	}
 
