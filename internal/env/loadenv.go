@@ -22,8 +22,9 @@ func LoadEnv() (err error) {
 	dbUser := os.Getenv("DB_USER")
 	dbPwd := os.Getenv("DB_PWD")
 	dbName := os.Getenv("DB_NAME")
+	port := os.Getenv("PORT")
 
-	if dbURL == "" || dbUser == "" || dbPwd == "" || dbName == "" {
+	if dbURL == "" || dbUser == "" || dbPwd == "" || dbName == "" || port == "" {
 		return ErrMissingEnvVars
 	}
 

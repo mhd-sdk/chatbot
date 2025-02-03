@@ -57,7 +57,7 @@ func New() *Server {
 }
 
 func (s *Server) ServeAPI() error {
-	slog.Info("Serving api on localhost:3000")
-	return s.fiberServer.Listen(":3000")
-
+	port := os.Getenv("PORT")
+	slog.Info("Serving api on localhost:" + port)
+	return s.fiberServer.Listen(":" + port)
 }
