@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/mhd-sdk/chatbot/model"
 	"github.com/ollama/ollama/api"
@@ -25,6 +26,7 @@ func New() *Server {
 		DisableStartupMessage: true,
 	})
 	fiberServer.Use(logger.New(logger.Config{}))
+	fiberServer.Use(cors.New())
 	dbURL := os.Getenv("DB_URL")
 	dbUser := os.Getenv("DB_USER")
 	dbPwd := os.Getenv("DB_PWD")

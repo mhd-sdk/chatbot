@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+    <style>
+        body { display: flex; font-family: Arial, sans-serif; }
+        #chat-list { width: 30%; border-right: 1px solid #ccc; padding: 10px; }
+        #chat-list div { cursor: pointer; padding: 5px; border-bottom: 1px solid #eee; }
+        #chat-container { flex: 1; display: flex; flex-direction: column; }
+        #messages { flex: 1; padding: 10px; overflow-y: auto; }
+        #input-container { display: flex; padding: 10px; border-top: 1px solid #ccc; }
+        input { flex: 1; padding: 5px; }
+        button { margin-left: 5px; }
+    </style>
+</head>
+<body>
+    <div id="chat-list">
+        <h3>Chats</h3>
+        <button onclick="createChat()">+ Nouveau Chat</button>
+        <div id="chats"></div>
+    </div>
+    <div id="chat-container">
+        <h3 id="chat-title">Sélectionnez un chat</h3>
+        <div id="messages"></div>
+        <div id="input-container">
+            <input id="message-input" type="text" placeholder="Écrivez un message...">
+            <button onclick="sendMessage()">Envoyer</button>
+        </div>
+    </div>
+
+    <script>
+        let currentChatId = null;
+
+        async function fetchChats() {
+            const response = await fetch("http://localhost:3000/chats");
+            const chats = await response.json();
+            const chatList = document.getElementById("chats");
+            chatList.innerHTML = "";
+            console.log(chats);
+            chats.forEach(chat => {
+                const div = document.createElement("div");
+                div.textContent = chat.name || "Chat " + chat.ID;
+                div.onclick = () => loadChat(chat.ID);
+                chatList.appendChild(div);
+            });
+        }
+
+        async function createChat() {
+            const response = await fetch("http://localhost:3000/chats", { method: "POST" });
+            const chat = await response.json();
+            fetchChats();
+            loadChat(chat.ID);
+        }
+
+        async function loadChat(chatId) {
+            currentChatId = chatId;
+            document.getElementById("chat-title").textContent = "Chat " + chatId;
+            const messagesContainer = document.getElementById("messages");
+            messagesContainer.innerHTML = "";
+
+            const response = await fetch(`http://localhost:3000/chats/${chatId}`);
+            const chat = await response.json();
+            chat.messages.forEach(msg => addMessage(msg.role === "user" ? "Vous" : "Assistant", msg.content));
+        }
+
+        async function sendMessage() {
+            if (!currentChatId) return alert("Sélectionnez un chat");
+            const input = document.getElementById("message-input");
+            const message = input.value.trim();
+            if (!message) return;
+
+            addMessage("Vous", message);
+            input.value = "";
+
+            const response = await fetch(`http://localhost:3000/chats/${currentChatId}/message`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ "prompt": message })
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let assistantMessage = "";
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                assistantMessage += decoder.decode(value, { stream: true });
+                updateAssistantMessage(assistantMessage);
+            }
+        }
+
+        function addMessage(sender, text) {
+            const messageDiv = document.createElement("div");
+            messageDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+            document.getElementById("messages").appendChild(messageDiv);
+        }
+
+        function updateAssistantMessage(text) {
+            let lastMessage = document.getElementById("messages").lastChild;
+            if (!lastMessage || !lastMessage.innerHTML.includes("Assistant")) {
+                lastMessage = document.createElement("div");
+                lastMessage.innerHTML = `<strong>Assistant:</strong> `;
+                document.getElementById("messages").appendChild(lastMessage);
+            }
+            lastMessage.innerHTML = `<strong>Assistant:</strong> ${text}`;
+        }
+
+        fetchChats();
+    </script>
+</body>
+</html>
