@@ -11,10 +11,12 @@ import (
 )
 
 func initHandlers(s *Server) {
-	s.fiberServer.Post("/chats", createChat(s))
-	s.fiberServer.Get("/chats/:chatID", getChat(s))
+	s.fiberServer.Post("/chats/:userID", createChat(s))
 	s.fiberServer.Post("/chats/:chatID/message", sendMessage(s))
-	s.fiberServer.Get("/chats", getChats(s))
+	s.fiberServer.Get("/chats/:chatID", getChat(s))
+	s.fiberServer.Get("/chats/user/:userID", getChats(s))
+	s.fiberServer.Put("/chats/:chatID", renameChat(s))    // Handler pour renommer un chat
+	s.fiberServer.Delete("/chats/:chatID", deleteChat(s)) // Handler pour supprimer un chat
 }
 
 func getChat(s *Server) fiber.Handler {
@@ -30,7 +32,17 @@ func getChat(s *Server) fiber.Handler {
 
 func createChat(s *Server) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		chat := model.Chat{}
+		var request struct {
+			Name string `json:"name"`
+		}
+		if err := c.BodyParser(&request); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+		}
+
+		chat := model.Chat{
+			UserID: c.Params("userID"),
+			Name:   request.Name,
+		}
 		s.db.Create(&chat)
 		return c.JSON(chat)
 	}
@@ -87,7 +99,8 @@ func sendMessage(s *Server) fiber.Handler {
 			}
 			err := s.ollamaClient.Chat(ctx, ollamaRequest, respFunc)
 			if err != nil {
-				c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get response"})
+				fmt.Println(err)
+				c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get response", "ollama error": err.Error()})
 			}
 			llmMessage := model.Message{
 				ChatID:  chat.ID,
@@ -97,14 +110,45 @@ func sendMessage(s *Server) fiber.Handler {
 			chat.AddMessage(llmMessage)
 			s.db.Save(&chat)
 		})
-		return nil
+		return c.SendStatus(fiber.StatusOK)
 	}
 }
 
 func getChats(s *Server) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var chats []model.Chat
-		s.db.Preload("Messages").Find(&chats)
+		s.db.Preload("Messages").Where("user_id = ?", c.Params("userID")).Find(&chats)
 		return c.JSON(chats)
+	}
+}
+
+func renameChat(s *Server) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		ID := c.Params("chatID")
+		var request struct {
+			Name string `json:"name"`
+		}
+		if err := c.BodyParser(&request); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+		}
+
+		chat := model.Chat{}
+		if err := s.db.First(&chat, ID).Error; err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Chat not found"})
+		}
+
+		chat.Name = request.Name
+		s.db.Save(&chat)
+		return c.JSON(chat)
+	}
+}
+
+func deleteChat(s *Server) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		ID := c.Params("chatID")
+		if err := s.db.Delete(&model.Chat{}, ID).Error; err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Chat not found"})
+		}
+		return c.SendStatus(fiber.StatusNoContent)
 	}
 }

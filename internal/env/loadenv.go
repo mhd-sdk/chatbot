@@ -19,12 +19,13 @@ func LoadEnv() (err error) {
 	}
 
 	dbURL := os.Getenv("DB_URL")
+	ollamaUrl := os.Getenv("OLLAMA_HOST")
 	dbUser := os.Getenv("DB_USER")
 	dbPwd := os.Getenv("DB_PWD")
 	dbName := os.Getenv("DB_NAME")
 	port := os.Getenv("PORT")
 
-	if dbURL == "" || dbUser == "" || dbPwd == "" || dbName == "" || port == "" {
+	if dbURL == "" || dbUser == "" || dbPwd == "" || dbName == "" || port == "" || ollamaUrl == "" {
 		return ErrMissingEnvVars
 	}
 

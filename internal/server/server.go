@@ -31,16 +31,17 @@ func New() *Server {
 	dbUser := os.Getenv("DB_USER")
 	dbPwd := os.Getenv("DB_PWD")
 	dbName := os.Getenv("DB_NAME")
-
 	dsn := dbUser + ":" + dbPwd + "@tcp(" + dbURL + ")/" + dbName + "?charset=utf8mb4&parseTime=True&loc=Local"
+	slog.Info("Connecting to database", "dsn", dsn)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
+	slog.Info("Migrating database")
 	db.AutoMigrate(model.Chat{}, model.Message{})
-
+	slog.Info("Database migrated")
 	ollamaClient, err := api.ClientFromEnvironment()
 	if err != nil {
 		log.Fatal(err)

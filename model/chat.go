@@ -7,6 +7,7 @@ import (
 
 type Chat struct {
 	gorm.Model
+	UserID   string    `json:"user_id"`
 	Name     string    `json:"name"`
 	Messages []Message `json:"messages"`
 }
